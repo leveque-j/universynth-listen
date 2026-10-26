@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Universynth Listening Room</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Unbounded:wght@500;600&display=swap">
+<style>
+/* Layout: short intro, then one row per translation direction. */
+:root {
+  --bg: #f2f4f6; --surface: #ffffff; --ink: #15202b; --muted: #5a6775; --line: #d8dee4; --hover: #eef1f4;
+  --src: #c2541c; --tgt: #0c7c89;
+  --display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1318; --surface: #151c23; --ink: #e4e9ee; --muted: #8b98a6; --line: #26313b; --hover: #1b242c;
+  --src: #f0874a; --tgt: #3cc4cf; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e1318; --surface: #151c23; --ink: #e4e9ee; --muted: #8b98a6; --line: #26313b; --hover: #1b242c;
+  --src: #f0874a; --tgt: #3cc4cf; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); margin: 0 }
+.wrap { max-width: 860px; margin: 0 auto; padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+h1 { font: 600 clamp(28px, 5vw, 44px)/1.05 var(--display); margin: 0 0 12px; letter-spacing: -.01em }
+p { color: var(--muted); max-width: 64ch; margin: 0 0 28px }
+.pairs { display: grid; gap: 10px }
+a.pair { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 20px; align-items: center; text-decoration: none; color: inherit;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px }
+a.pair:hover { background: var(--hover) }
+a.pair:focus-visible { outline: 2px solid var(--tgt); outline-offset: 2px }
+.name { font: 600 20px/1.2 var(--display); display: flex; flex-wrap: wrap; gap: .35em; align-items: baseline }
+.name .s { color: var(--src) } .name .t { color: var(--tgt) } .name .arrow { color: var(--muted); font-weight: 500 }
+.facts { font: 13px var(--mono); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums }
+.facts b { color: var(--ink); font-weight: 500 }
+@media (max-width: 520px) { a.pair { grid-template-columns: minmax(0, 1fr) } .facts { text-align: left } }
+</style>
+<div class="wrap">
+  <h1>Universynth</h1>
+  <p>Synth patches translated from one synthesizer to another. Each page plays the original and the translation side by side, rendered from the same MIDI, with a switch that flips between them at the same spot.</p>
+  <div class="pairs" id="pairs"></div>
+</div>
+<script id="data" type="application/json">[{"key":"primer-vital","source":"Primer","target":"Vital","count":38,"median_shape":1.355}]</script>
+<script>
+const pairs = JSON.parse(document.getElementById('data').textContent);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+document.getElementById('pairs').innerHTML = pairs.map(p => `
+  <a class="pair" href="${esc(p.key)}/index.html">
+    <span class="name"><span class="s">${esc(p.source)}</span><span class="arrow">→</span><span class="t">${esc(p.target)}</span></span>
+    <span class="facts"><b>${p.count}</b> patches · median gap <b>${p.median_shape == null ? '–' : p.median_shape.toFixed(2) + ' dB'}</b></span>
+  </a>`).join('');
+</script>
