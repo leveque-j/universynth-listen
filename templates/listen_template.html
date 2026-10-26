@@ -1,0 +1,350 @@
+<title>__TITLE__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Unbounded:wght@500;600&display=swap">
+<style>
+/* Layout: one column of patch strips; each strip = identity | synced A/B player with mirrored waveform | readouts. */
+:root {
+  --bg: #f2f4f6; --surface: #ffffff; --ink: #15202b; --muted: #5a6775; --line: #d8dee4; --hover: #eef1f4;
+  --src: #c2541c; --src-soft: #c2541c26; --tgt: #0c7c89; --tgt-soft: #0c7c8926;
+  --good: #2e8a4b; --warn: #a96f12; --bad: #bf3a2b;
+  --display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1318; --surface: #151c23; --ink: #e4e9ee; --muted: #8b98a6; --line: #26313b; --hover: #1b242c;
+  --src: #f0874a; --src-soft: #f0874a2e; --tgt: #3cc4cf; --tgt-soft: #3cc4cf2e;
+  --good: #5cc27e; --warn: #e3a64a; --bad: #ef6c5c; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e1318; --surface: #151c23; --ink: #e4e9ee; --muted: #8b98a6; --line: #26313b; --hover: #1b242c;
+  --src: #f0874a; --src-soft: #f0874a2e; --tgt: #3cc4cf; --tgt-soft: #3cc4cf2e;
+  --good: #5cc27e; --warn: #e3a64a; --bad: #ef6c5c; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); margin: 0 }
+.wrap { max-width: 1200px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+a { color: inherit }
+button, select, input { font: inherit; color: inherit }
+:focus-visible { outline: 2px solid var(--tgt); outline-offset: 2px }
+
+header.top { display: grid; gap: 14px; margin-bottom: 22px }
+.crumb { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted) }
+.crumb a { text-decoration: none } .crumb a:hover { color: var(--ink) }
+h1 { font: 600 clamp(26px, 4vw, 40px)/1.1 var(--display); margin: 0; text-wrap: balance; display: flex; flex-wrap: wrap; gap: .3em; align-items: baseline }
+h1 .s { color: var(--src) } h1 .t { color: var(--tgt) } h1 .arrow { color: var(--muted); font-weight: 500 }
+.about { color: var(--muted); max-width: 68ch; margin: 0 }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 28px; font: 13px/1.3 var(--mono); color: var(--muted) }
+.stats b { display: block; font: 500 20px/1.2 var(--mono); color: var(--ink) }
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding-block: 10px; border-bottom: 1px solid var(--line); margin-bottom: 14px }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg) }
+.bar input[type=search] { flex: 1 1 200px; min-width: 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface) }
+.chips { display: flex; flex-wrap: wrap; gap: 6px }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 4px 11px; font-size: 13px; cursor: pointer }
+.chip[aria-pressed=true] { background: var(--ink); color: var(--bg); border-color: var(--ink) }
+.chip small { color: var(--muted); margin-left: 4px } .chip[aria-pressed=true] small { color: inherit; opacity: .7 }
+.bar select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface) }
+.toggle { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; user-select: none }
+.keys { font: 12px/1.4 var(--mono); color: var(--muted); width: 100% }
+kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--surface); color: var(--ink) }
+
+.list { display: grid; gap: 10px }
+.patch { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.1fr) minmax(0, 1.25fr); gap: 18px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; align-items: center }
+.patch.sel { border-color: var(--muted) }
+.patch.on { border-color: var(--ink) }
+.id { min-width: 0 }
+.id h2 { font: 600 16px/1.3 var(--body); margin: 0 0 4px; text-wrap: balance }
+.id .meta { font: 12px/1.4 var(--mono); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px }
+.id .meta a { text-decoration-color: var(--line) }
+details { margin-top: 8px; font-size: 13px; color: var(--muted) }
+summary { cursor: pointer; font: 12px var(--mono) }
+details ul { margin: 6px 0 0; padding-left: 18px } details li { margin: 2px 0 }
+
+.player { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: center; min-width: 0 }
+.play { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: grid; place-items: center }
+.play:hover { background: var(--hover) }
+.play svg { width: 16px; height: 16px; fill: var(--ink) }
+.ab { display: inline-grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; justify-self: start }
+.ab button { border: 0; background: var(--surface); padding: 5px 12px; font: 500 13px var(--body); cursor: pointer; display: flex; gap: 6px; align-items: center }
+.ab button i { width: 8px; height: 8px; border-radius: 50% }
+.ab button.a i { background: var(--src) } .ab button.b i { background: var(--tgt) }
+.ab button.a[aria-pressed=true] { background: var(--src-soft) } .ab button.b[aria-pressed=true] { background: var(--tgt-soft) }
+.ab button:not([aria-pressed=true]) { color: var(--muted) }
+.wave { grid-column: 1 / -1; position: relative; height: 64px; cursor: pointer }
+.wave canvas { width: 100%; height: 100%; display: block }
+.time { font: 12px var(--mono); color: var(--muted); justify-self: end; font-variant-numeric: tabular-nums }
+.ctl { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; min-width: 0 }
+
+.read { display: grid; gap: 8px; min-width: 0 }
+.nums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; font: 12px/1.25 var(--mono); color: var(--muted) }
+.nums b { display: block; font: 500 15px/1.3 var(--mono); color: var(--ink); font-variant-numeric: tabular-nums }
+.nums .good b { color: var(--good) } .nums .warn b { color: var(--warn) } .nums .bad b { color: var(--bad) }
+.bands svg { width: 100%; height: 58px; display: block; overflow: visible }
+.bands .cap { font: 11px var(--mono); color: var(--muted); display: flex; justify-content: space-between; gap: 8px }
+.empty { padding: 40px 0; color: var(--muted); text-align: center }
+footer { margin-top: 28px; font-size: 13px; color: var(--muted); max-width: 80ch }
+
+@media (max-width: 900px) {
+  .patch { grid-template-columns: minmax(0, 1fr) }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="crumb"><a href="../index.html">Universynth</a> / listening room</div>
+    <h1 id="title"></h1>
+    <p class="about" id="about"></p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="Filter and playback options">
+    <input type="search" id="q" placeholder="Search patches" aria-label="Search patches">
+    <div class="chips" id="types"></div>
+    <select id="sort" aria-label="Sort">
+      <option value="shape">Closest match first</option>
+      <option value="-shape">Furthest first</option>
+      <option value="frame">Closest over time first</option>
+      <option value="loud">Biggest loudness gap first</option>
+      <option value="title">Name</option>
+    </select>
+    <label class="toggle"><input type="checkbox" id="match"> Match loudness</label>
+    <div class="keys"><kbd>Space</kbd> play/pause · <kbd>X</kbd> switch · <kbd>A</kbd>/<kbd>B</kbd> pick side · <kbd>↑</kbd><kbd>↓</kbd> previous/next patch · click the waveform to jump</div>
+  </div>
+
+  <div class="list" id="list"></div>
+  <footer id="foot"></footer>
+</div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(() => {
+  const D = JSON.parse(document.getElementById('data').textContent);
+  const $ = (s, r = document) => r.querySelector(s);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const fmt = (v, d = 1) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d);
+  const median = a => { const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // Header
+  $('#title').innerHTML = `<span class="s">${esc(D.source)}</span><span class="arrow">→</span><span class="t">${esc(D.target)}</span>`;
+  $('#about').textContent = D.about;
+  const P = D.patches;
+  const within2 = P.filter(p => p.shape <= 2).length;
+  $('#stats').innerHTML = [
+    [P.length, 'patches'],
+    [median(P.map(p => p.shape)).toFixed(2) + ' dB', 'median spectrum gap'],
+    [`${within2}/${P.length}`, 'within 2 dB'],
+    [median(P.map(p => p.frame)).toFixed(2) + ' dB', 'median gap over time'],
+    [fmt(median(P.map(p => p.loud)), 2) + ' dB', `median loudness, ${D.target} vs ${D.source}`],
+  ].map(([v, l]) => `<div><b>${v}</b>${l}</div>`).join('');
+  $('#foot').innerHTML = `Spectrum gap: mean difference of the averaged third-octave spectra, 60 Hz–12 kHz, level removed. Gap over time: the same per 50 ms frame, so it also catches envelope and modulation differences. Loudness: integrated LUFS of ${esc(D.target)} minus ${esc(D.source)}. Brightness: ratio of spectral centroids. The band chart shows where ${esc(D.target)} has more (up) or less (down) energy than ${esc(D.source)}, ±9 dB.` + (D.mapping ? ` Parameter mapping: <code>${esc(D.mapping)}</code>.` : '');
+
+  // Type chips
+  const types = {}; P.forEach(p => types[p.type] = (types[p.type] || 0) + 1);
+  let typeSel = 'All';
+  const chips = $('#types');
+  chips.innerHTML = [['All', P.length], ...Object.entries(types).sort((a, b) => b[1] - a[1])]
+    .map(([t, n]) => `<button class="chip" type="button" data-t="${esc(t)}" aria-pressed="${t === 'All'}">${esc(t)}<small>${n}</small></button>`).join('');
+  chips.addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    typeSel = b.dataset.t; chips.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c === b)); render();
+  });
+
+  // Quality class for readouts
+  const q = (v, good, ok) => v <= good ? 'good' : v <= ok ? 'warn' : 'bad';
+
+  function bandsSvg(p) {
+    const W = 240, H = 46, mid = H / 2, n = p.bands.length, bw = W / n, scale = (mid - 2) / 9;
+    let s = `<svg viewBox="0 0 ${W} ${H + 12}" preserveAspectRatio="none" role="img" aria-label="Band difference">`;
+    s += `<line x1="0" x2="${W}" y1="${mid}" y2="${mid}" stroke="${css('--line')}" stroke-width="1"/>`;
+    p.bands.forEach((v, i) => {
+      if (v === null) return;
+      const c = Math.max(-9, Math.min(9, v)), h = Math.max(0.8, Math.abs(c) * scale);
+      s += `<rect x="${(i * bw + 0.6).toFixed(1)}" width="${(bw - 1.2).toFixed(1)}" y="${(c > 0 ? mid - h : mid).toFixed(1)}" height="${h.toFixed(1)}" fill="${c > 0 ? css('--tgt') : css('--src')}"><title>${D.bands[i]} Hz: ${fmt(v)} dB</title></rect>`;
+    });
+    [100, 1000, 10000].forEach(f => {
+      let i = 0; D.bands.forEach((b, k) => { if (Math.abs(Math.log(b / f)) < Math.abs(Math.log(D.bands[i] / f))) i = k; });
+      const x = i * bw + bw / 2;
+      s += `<line x1="${x}" x2="${x}" y1="${H}" y2="${H + 3}" stroke="${css('--muted')}"/><text x="${x}" y="${H + 11}" font-size="8" text-anchor="middle" fill="${css('--muted')}" font-family="${css('--mono')}">${f >= 1000 ? f / 1000 + 'k' : f}</text>`;
+    });
+    return s + '</svg>';
+  }
+
+  // Rows
+  const rows = new Map();
+  function rowEl(p) {
+    const el = document.createElement('article');
+    el.className = 'patch'; el.tabIndex = -1; el.dataset.id = p.id;
+    const n = p.notes.length;
+    el.innerHTML = `
+      <div class="id">
+        <h2>${esc(p.title)}</h2>
+        <div class="meta"><span>${esc(p.type)}</span><span>#${esc(p.id)}</span>${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener">preset page</a>` : ''}</div>
+        ${n ? `<details><summary>${n} conversion note${n > 1 ? 's' : ''}</summary><ul>${p.notes.map(t => `<li>${esc(t)}</li>`).join('')}</ul></details>` : ''}
+      </div>
+      <div class="player">
+        <button class="play" type="button" aria-label="Play ${esc(p.title)}"><svg viewBox="0 0 16 16"><path d="M3 1.5v13l11-6.5z"/></svg></button>
+        <div class="ctl">
+          <div class="ab" role="group" aria-label="Which synth">
+            <button type="button" class="a" aria-pressed="true"><i></i>${esc(D.source)}</button>
+            <button type="button" class="b" aria-pressed="false"><i></i>${esc(D.target)}</button>
+          </div>
+          <span class="time">0:00 / ${clock(p.dur)}</span>
+        </div>
+        <div class="wave" title="Top: ${esc(D.source)} · bottom: ${esc(D.target)} · click to jump"><canvas></canvas></div>
+      </div>
+      <div class="read">
+        <div class="nums">
+          <div class="${q(p.shape, 1.5, 3)}" title="Averaged spectrum gap"><b>${p.shape.toFixed(2)}</b>spectrum</div>
+          <div class="${q(p.frame, 4, 6)}" title="Spectrum gap per 50 ms frame"><b>${p.frame.toFixed(2)}</b>over time</div>
+          <div class="${q(Math.abs(p.loud), 1, 3)}" title="${esc(D.target)} minus ${esc(D.source)}, LUFS"><b>${fmt(p.loud)}</b>loudness</div>
+          <div class="${q(Math.abs(Math.log2(p.bright)), 0.1, 0.3)}" title="Spectral centroid ratio"><b>×${p.bright.toFixed(2)}</b>brightness</div>
+        </div>
+        <div class="bands">${bandsSvg(p)}<div class="cap"><span>${esc(D.target)} darker ↓</span><span>↑ brighter</span></div></div>
+      </div>`;
+    const r = { p, el, cv: $('canvas', el), t: 0, side: 'a' };
+    $('.play', el).addEventListener('click', () => toggle(r));
+    $('.ab .a', el).addEventListener('click', () => setSide(r, 'a'));
+    $('.ab .b', el).addEventListener('click', () => setSide(r, 'b'));
+    $('.wave', el).addEventListener('click', e => {
+      const box = e.currentTarget.getBoundingClientRect();
+      seek(r, (e.clientX - box.left) / box.width * p.dur);
+    });
+    el.addEventListener('pointerdown', () => select(r));
+    rows.set(p.id, r);
+    return r;
+  }
+
+  function clock(s) { s = Math.max(0, s); return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0'); }
+
+  function draw(r) {
+    const cv = r.cv, dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if (!w) return;
+    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    const mid = h / 2, n = r.p.peaks[0].length, step = w / n, frac = r.t / r.p.dur;
+    const cols = [css('--src'), css('--tgt')];
+    for (let s = 0; s < 2; s++) {
+      const pk = r.p.peaks[s], active = (s === 0) === (r.side === 'a');
+      for (let i = 0; i < n; i++) {
+        const v = pk[i] / 100 * (mid - 2), x = i * step, played = (i + 0.5) / n <= frac;
+        g.globalAlpha = (active ? 1 : 0.45) * (played ? 1 : 0.4);
+        g.fillStyle = cols[s];
+        g.fillRect(x, s === 0 ? mid - 1 - v : mid + 1, Math.max(1, step - 0.6), Math.max(0.6, v));
+      }
+    }
+    g.globalAlpha = 1;
+    if (r.t > 0) { g.fillStyle = css('--ink'); g.fillRect(Math.min(w - 1.5, frac * w), 0, 1.5, h); }
+  }
+
+  // Playback: both clips play in sync, the hidden one muted, so switching is instant and keeps the position.
+  let cur = null, sel = null, raf = 0;
+  const matchBox = $('#match');
+  try { matchBox.checked = localStorage.getItem('us-match') === '1'; } catch (e) {}
+  matchBox.addEventListener('change', () => { try { localStorage.setItem('us-match', matchBox.checked ? '1' : '0'); } catch (e) {} if (cur) volumes(cur); });
+
+  function volumes(r) {
+    const [la, lb] = r.p.lufs, ref = Math.min(la, lb);
+    const ga = matchBox.checked ? Math.pow(10, (ref - la) / 20) : 1, gb = matchBox.checked ? Math.pow(10, (ref - lb) / 20) : 1;
+    r.a.volume = r.side === 'a' ? Math.min(1, ga) : 0;
+    r.b.volume = r.side === 'b' ? Math.min(1, gb) : 0;
+  }
+  function select(r) {
+    if (sel === r) return;
+    if (sel) sel.el.classList.remove('sel');
+    sel = r; r.el.classList.add('sel');
+  }
+  function setSide(r, side) {
+    r.side = side;
+    $('.ab .a', r.el).setAttribute('aria-pressed', side === 'a');
+    $('.ab .b', r.el).setAttribute('aria-pressed', side === 'b');
+    select(r);
+    if (r.a) { const lead = side === 'a' ? r.b : r.a, follow = side === 'a' ? r.a : r.b; follow.currentTime = lead.currentTime; volumes(r); }
+    draw(r);
+  }
+  function stop(r) {
+    if (!r || !r.a) return;
+    r.a.pause(); r.b.pause();
+    r.el.classList.remove('on'); $('.play', r.el).innerHTML = '<svg viewBox="0 0 16 16"><path d="M3 1.5v13l11-6.5z"/></svg>';
+    if (cur === r) { cur = null; cancelAnimationFrame(raf); }
+  }
+  async function start(r, at) {
+    if (cur && cur !== r) stop(cur);
+    select(r);
+    if (!r.a) {
+      r.a = new Audio(r.p.a); r.b = new Audio(r.p.b);
+      [r.a, r.b].forEach(x => { x.preload = 'auto'; x.addEventListener('ended', () => { if (cur === r) { stop(r); r.t = 0; draw(r); tick(r); } }); });
+    }
+    r.a.currentTime = r.b.currentTime = at ?? r.t;
+    volumes(r);
+    cur = r; r.el.classList.add('on');
+    $('.play', r.el).innerHTML = '<svg viewBox="0 0 16 16"><path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/></svg>';
+    try { await Promise.all([r.a.play(), r.b.play()]); } catch (e) { stop(r); return; }
+    loop();
+  }
+  function toggle(r) { if (cur === r) { r.t = r.a.currentTime; stop(r); draw(r); } else start(r); }
+  function seek(r, t) {
+    r.t = Math.max(0, Math.min(r.p.dur - 0.05, t));
+    if (cur === r) { r.a.currentTime = r.b.currentTime = r.t; } else start(r, r.t);
+    draw(r); tick(r);
+  }
+  function tick(r) { $('.time', r.el).textContent = `${clock(r.t)} / ${clock(r.p.dur)}`; }
+  function loop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      if (!cur) return;
+      const r = cur, lead = r.side === 'a' ? r.a : r.b, follow = r.side === 'a' ? r.b : r.a;
+      if (Math.abs(lead.currentTime - follow.currentTime) > 0.04 && follow.currentTime < follow.duration - 0.05) follow.currentTime = lead.currentTime;
+      r.t = lead.currentTime; draw(r); tick(r);
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  // Filter / sort / render
+  const list = $('#list');
+  P.forEach(rowEl);
+  function render() {
+    const term = $('#q').value.trim().toLowerCase(), key = $('#sort').value;
+    let v = P.filter(p => (typeSel === 'All' || p.type === typeSel) && (!term || (p.title + ' ' + p.id + ' ' + p.type + ' ' + p.notes.join(' ')).toLowerCase().includes(term)));
+    const by = { shape: p => p.shape, '-shape': p => -p.shape, frame: p => p.frame, loud: p => -Math.abs(p.loud) };
+    v.sort(key === 'title' ? (x, y) => x.title.localeCompare(y.title) : (x, y) => by[key](x) - by[key](y));
+    list.replaceChildren(...v.map(p => rows.get(p.id).el));
+    if (!v.length) list.innerHTML = `<p class="empty">No patches match “${esc(term)}”${typeSel !== 'All' ? ` in ${esc(typeSel)}` : ''}.</p>`;
+    requestAnimationFrame(() => v.forEach(p => draw(rows.get(p.id))));
+  }
+  $('#q').addEventListener('input', render);
+  $('#sort').addEventListener('change', render);
+  new ResizeObserver(() => rows.forEach(draw)).observe(list);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => rows.forEach(draw));
+  render();
+  select(rows.get(list.querySelector('.patch')?.dataset.id) || [...rows.values()][0]);
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+    const vis = [...list.querySelectorAll('.patch')].map(el => rows.get(el.dataset.id));
+    if (!sel || !vis.length) return;
+    const k = e.key.toLowerCase();
+    if (k === ' ') { e.preventDefault(); toggle(sel); }
+    else if (k === 'x') setSide(sel, sel.side === 'a' ? 'b' : 'a');
+    else if (k === 'a') setSide(sel, 'a');
+    else if (k === 'b') setSide(sel, 'b');
+    else if (k === 'arrowdown' || k === 'arrowup') {
+      e.preventDefault();
+      const i = Math.max(0, vis.indexOf(sel)) + (k === 'arrowdown' ? 1 : -1);
+      if (i < 0 || i >= vis.length) return;
+      const playing = cur === sel, side = sel.side;
+      if (playing) stop(sel);
+      const nx = vis[i]; select(nx); nx.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      if (nx.side !== side) setSide(nx, side);
+      if (playing) start(nx, 0);
+    }
+  });
+})();
+</script>

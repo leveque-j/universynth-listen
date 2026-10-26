@@ -1,0 +1,39 @@
+# Copied to .github/workflows/pages.yml in the public site repo by publish_pages.sh.
+# Rebuilds every listening page and the index from the pair bundles (data/<pair>/) on each push, then deploys Pages.
+name: Build listening pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["data/**", "templates/**", "assemble.py", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble pages
+        run: python3 assemble.py --data data --out _site --templates templates
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
