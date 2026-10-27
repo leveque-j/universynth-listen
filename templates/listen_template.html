@@ -142,7 +142,7 @@ footer { margin-top: 28px; font-size: 13px; color: var(--muted); max-width: 80ch
     [median(P.map(p => p.frame)).toFixed(2) + ' dB', 'median gap over time'],
     [fmt(median(P.map(p => p.loud)), 2) + ' dB', `median loudness, ${D.target} vs ${D.source}`],
   ].map(([v, l]) => `<div><b>${v}</b>${l}</div>`).join('');
-  $('#foot').innerHTML = `Spectrum gap: mean difference of the averaged third-octave spectra, 60 Hz–12 kHz, level removed. Gap over time: the same per 50 ms frame, so it also catches envelope and modulation differences. Loudness: integrated LUFS of ${esc(D.target)} minus ${esc(D.source)}. Brightness: ratio of spectral centroids. The band chart shows where ${esc(D.target)} has more (up) or less (down) energy than ${esc(D.source)}, ±9 dB.` + (D.mapping ? ` Parameter mapping: <code>${esc(D.mapping)}</code>.` : '');
+  $('#foot').innerHTML = `Spectrum gap: mean difference of the averaged third-octave spectra, 60 Hz–12 kHz, level removed. Gap over time: the same per 50 ms frame, so it also catches envelope and modulation differences. Loudness: integrated LUFS of ${esc(D.target)} minus ${esc(D.source)}. Brightness: ratio of spectral centroids. The band chart shows, per frequency band, ${esc(D.target)} minus ${esc(D.source)}: up (teal) = ${esc(D.target)} has more energy there, down (orange) = less, ±9 dB. Brightness below 1 means ${esc(D.target)} is darker overall.` + (D.mapping ? ` Parameter mapping: <code>${esc(D.mapping)}</code>.` : '');
 
   // Type chips
   const types = {}; P.forEach(p => types[p.type] = (types[p.type] || 0) + 1);
@@ -205,7 +205,7 @@ footer { margin-top: 28px; font-size: 13px; color: var(--muted); max-width: 80ch
           <div class="${q(Math.abs(p.loud), 1, 3)}" title="${esc(D.target)} minus ${esc(D.source)}, LUFS"><b>${fmt(p.loud)}</b>loudness</div>
           <div class="${q(Math.abs(Math.log2(p.bright)), 0.1, 0.3)}" title="Spectral centroid ratio"><b>×${p.bright.toFixed(2)}</b>brightness</div>
         </div>
-        <div class="bands">${bandsSvg(p)}<div class="cap"><span>${esc(D.target)} darker ↓</span><span>↑ brighter</span></div></div>
+        <div class="bands">${bandsSvg(p)}<div class="cap"><span>↓ ${esc(D.target)} has less</span><span>${esc(D.target)} has more ↑</span></div></div>
       </div>`;
     const r = { p, el, cv: $('canvas', el), t: 0, side: 'a' };
     $('.play', el).addEventListener('click', () => toggle(r));
