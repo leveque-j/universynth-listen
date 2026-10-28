@@ -104,6 +104,7 @@ footer { margin-top: 28px; font-size: 13px; color: var(--muted) }
 
   <div class="bar" role="toolbar" aria-label="Filter and playback options">
     <input type="search" id="q" placeholder="Search patches" aria-label="Search patches">
+    <div class="chips" id="cols" hidden></div>
     <div class="chips" id="types"></div>
     <select id="sort" aria-label="Sort">
       <option value="shape">Closest match first</option>
@@ -155,6 +156,20 @@ footer { margin-top: 28px; font-size: 13px; color: var(--muted) }
     typeSel = b.dataset.t; chips.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c === b)); render();
   });
 
+  // Collection chips (only when the page holds more than one collection)
+  const cols = {}; P.forEach(p => { if (p.collection) cols[p.collection] = (cols[p.collection] || 0) + 1; });
+  let colSel = 'All';
+  if (Object.keys(cols).length > 1) {
+    const cc = $('#cols');
+    cc.hidden = false;
+    cc.innerHTML = [['All', P.length], ...Object.entries(cols)]
+      .map(([t, n]) => `<button class="chip" type="button" data-c="${esc(t)}" aria-pressed="${t === 'All'}">${esc(t)}<small>${n}</small></button>`).join('');
+    cc.addEventListener('click', e => {
+      const b = e.target.closest('.chip'); if (!b) return;
+      colSel = b.dataset.c; cc.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c === b)); render();
+    });
+  }
+
   // Quality class for readouts
   const q = (v, good, ok) => v <= good ? 'good' : v <= ok ? 'warn' : 'bad';
 
@@ -184,7 +199,7 @@ footer { margin-top: 28px; font-size: 13px; color: var(--muted) }
     el.innerHTML = `
       <div class="id">
         <h2>${esc(p.title)}</h2>
-        <div class="meta"><span>${esc(p.type)}</span><span>#${esc(p.id)}</span>${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener">preset page</a>` : ''}</div>
+        <div class="meta"><span>${esc(p.type)}</span>${p.collection && Object.keys(cols).length > 1 ? `<span>${esc(p.collection)}</span>` : ''}<span>#${esc(p.id)}</span>${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener">preset page</a>` : ''}</div>
         ${n ? `<details><summary>${n} conversion note${n > 1 ? 's' : ''}</summary><ul>${p.notes.map(t => `<li>${esc(t)}</li>`).join('')}</ul></details>` : ''}
       </div>
       <div class="player">
@@ -311,7 +326,8 @@ footer { margin-top: 28px; font-size: 13px; color: var(--muted) }
   P.forEach(rowEl);
   function render() {
     const term = $('#q').value.trim().toLowerCase(), key = $('#sort').value;
-    let v = P.filter(p => (typeSel === 'All' || p.type === typeSel) && (!term || (p.title + ' ' + p.id + ' ' + p.type + ' ' + p.notes.join(' ')).toLowerCase().includes(term)));
+    let v = P.filter(p => (typeSel === 'All' || p.type === typeSel) && (colSel === 'All' || p.collection === colSel) &&
+      (!term || (p.title + ' ' + p.id + ' ' + p.type + ' ' + (p.collection || '') + ' ' + p.notes.join(' ')).toLowerCase().includes(term)));
     const by = { shape: p => p.shape, '-shape': p => -p.shape, frame: p => p.frame, loud: p => -Math.abs(p.loud) };
     v.sort(key === 'title' ? (x, y) => x.title.localeCompare(y.title) : (x, y) => by[key](x) - by[key](y));
     list.replaceChildren(...v.map(p => rows.get(p.id).el));
