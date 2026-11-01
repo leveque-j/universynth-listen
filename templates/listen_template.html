@@ -265,7 +265,8 @@ footer { margin-top: 28px; font-size: 13px; color: var(--muted) }
 
   function volumes(r) {
     const [la, lb] = r.p.lufs, ref = Math.min(la, lb);
-    const ga = matchBox.checked ? Math.pow(10, (ref - la) / 20) : 1, gb = matchBox.checked ? Math.pow(10, (ref - lb) / 20) : 1;
+    const match = matchBox.checked && la != null && lb != null;  // a silent side has no LUFS
+    const ga = match ? Math.pow(10, (ref - la) / 20) : 1, gb = match ? Math.pow(10, (ref - lb) / 20) : 1;
     r.a.volume = r.side === 'a' ? Math.min(1, ga) : 0;
     r.b.volume = r.side === 'b' ? Math.min(1, gb) : 0;
   }
