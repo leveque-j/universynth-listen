@@ -18,8 +18,20 @@ HEAD = ('<!doctype html>\n<html lang="en">\n<meta charset="utf-8">\n'
         '<meta name="robots" content="noindex, nofollow">\n')  # published on GitHub Pages: link-only
 
 
+
+def _finite(x):
+    """JSON for the browser: NaN / +-Infinity (e.g. the LUFS of a silent render) are not valid JSON and blank the page
+    -> null."""
+    if isinstance(x, float):
+        return x if x == x and abs(x) != float("inf") else None
+    if isinstance(x, dict):
+        return {k: _finite(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [_finite(v) for v in x]
+    return x
+
 def inline(data):
-    return json.dumps(data, separators=(",", ":")).replace("</", "<\\/")
+    return json.dumps(_finite(data), separators=(",", ":")).replace("</", "<\\/")
 
 
 def main(data_dir, out_dir, templates):
